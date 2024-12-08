@@ -1,36 +1,30 @@
 ```
-import org.apache.commons.net.ftp.FTP;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+```
 
-public class EFSHttpSender {
-    public static void main(String[] args) {
-        String endpoint = "https://your-api-endpoint.com/upload";
-        String data = "This is the data from EFS.";
+```
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
 
+import java.util.Map;
+
+@RestController
+@RequestMapping("/upload")
+public class UploadController {
+
+    @PostMapping
+    public ResponseEntity<?> receiveData(@RequestBody Map<String, Object> data) {
         try {
-            // Create URL object
-            URL url = new URL(endpoint);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            System.out.println("Received Data: " + data);
 
-            // Configure connection
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Accept", "application/json");
-
-            // Send data
-            try (OutputStream os = connection.getOutputStream()) {
-                byte[] input = data.getBytes("utf-8");
-                os.write(input, 0, input.length);
-            }
-
-            // Get response
-            int responseCode = connection.getResponseCode();
-            System.out.println("Response Code: " + responseCode);
+            // 필요한 처리를 하고 응답 반환
+            return ResponseEntity.ok(Map.of("status", "success", "received", data));
         } catch (Exception e) {
             e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("status", "error", "message", e.getMessage()));
         }
     }
 }
@@ -40,24 +34,25 @@ public class EFSHttpSender {
 Python
 ---
 ```
-import requests
+from flask import Flask, request, jsonify
 
-def send_data_to_https():
-    url = "https://your-api-endpoint.com/upload"
-    data = {
-        "content": "This is the data from EFS."
-    }
+app = Flask(__name__)
 
+@app.route('/upload', methods=['POST'])
+def upload_data():
     try:
-        # Send POST request with JSON data
-        response = requests.post(url, json=data)
-        print(f"Response Code: {response.status_code}")
-        print(f"Response Body: {response.text}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        # JSON 데이터를 가져오기
+        data = request.get_json()
+        print(f"Received Data: {data}")
 
-# Example usage
-if __name__ == "__main__":
-    send_data_to_https()
+        # 필요한 처리를 하고 응답 반환
+        return jsonify({"status": "success", "received": data}), 200
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+if __name__ == '__main__':
+    # HTTPS로 실행하기 위해 인증서와 키 설정
+    app.run(host='0.0.0.0', port=5000, ssl_context=('cert.pem', 'key.pem'))
 ```
 ---
