@@ -1,30 +1,35 @@
 ```
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-</dependency>
+server.port=8080
+efs.path=/efs/your_directory
 ```
 
 ```
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.ResponseEntity;
-
-import java.util.Map;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 
 @RestController
-@RequestMapping("/upload")
-public class UploadController {
+@RequestMapping("/api")
+public class EFSApiController {
 
-    @PostMapping
-    public ResponseEntity<?> receiveData(@RequestBody Map<String, Object> data) {
+    private static final String EFS_DIRECTORY = "/efs/your_directory/";
+
+    @PostMapping("/upload")
+    public String uploadData(@RequestBody String data) {
         try {
-            System.out.println("Received Data: " + data);
+            // Define the file path in EFS
+            File file = new File(EFS_DIRECTORY + "uploaded_data.txt");
 
-            // 필요한 처리를 하고 응답 반환
-            return ResponseEntity.ok(Map.of("status", "success", "received", data));
-        } catch (Exception e) {
+            // Write data to the file
+            try (FileWriter writer = new FileWriter(file)) {
+                writer.write(data);
+            }
+
+            return "Data successfully saved to EFS!";
+        } catch (IOException e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("status", "error", "message", e.getMessage()));
+            return "Failed to save data: " + e.getMessage();
         }
     }
 }
@@ -35,24 +40,33 @@ Python
 ---
 ```
 from flask import Flask, request, jsonify
+import os
 
 app = Flask(__name__)
+
+# EFS Directory Path
+EFS_DIRECTORY = "/efs/your_directory"
 
 @app.route('/upload', methods=['POST'])
 def upload_data():
     try:
-        # JSON 데이터를 가져오기
+        # Get the JSON data from the request
         data = request.get_json()
-        print(f"Received Data: {data}")
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
 
-        # 필요한 처리를 하고 응답 반환
-        return jsonify({"status": "success", "received": data}), 200
+        # Create file path
+        file_path = os.path.join(EFS_DIRECTORY, "uploaded_data.txt")
+
+        # Write data to the file
+        with open(file_path, 'w') as file:
+            file.write(str(data))
+
+        return jsonify({"message": "Data successfully saved to EFS!"}), 200
     except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # HTTPS로 실행하기 위해 인증서와 키 설정
-    app.run(host='0.0.0.0', port=5000, ssl_context=('cert.pem', 'key.pem'))
+    app.run(host='0.0.0.0', port=8080)
 ```
 ---
