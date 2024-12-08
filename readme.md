@@ -1,3 +1,4 @@
+```
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 
@@ -50,12 +51,13 @@ public class FTPReceiver {
         }
     }
 }
-
+```
 
 ---
 
 Controller
 ---
+```
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 
@@ -89,11 +91,13 @@ public class FTPController {
         }
     }
 }
+```
 ---
 
 
 Python
 ---
+```
 from ftplib import FTP
 import os
 
@@ -123,4 +127,5 @@ class FTPReceiver:
                 print(f"File downloaded and saved to EFS: {local_file_path}")
             except Exception as e:
                 print(f"Failed to download file: {e}")
+```
 ---
