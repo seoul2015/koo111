@@ -9,19 +9,18 @@ implementation 'org.apache.httpcomponents.client5:httpclient5:5.2'
 @RequestMapping("/api/files")
 public class FileController {
 
+    // EFS 마운트된 경로 (예: /mnt/efs)
+    private static final String EFS_PATH = "/mnt/efs";
+
     @PostMapping("/send")
     public ResponseEntity<String> sendFile(@RequestParam("file") MultipartFile file) {
         try {
-            // 파일을 로컬 저장소 또는 임시 디렉토리에 저장
-            Path tempDir = Files.createTempDirectory("temp");
-            Path tempFile = tempDir.resolve(file.getOriginalFilename());
-            file.transferTo(tempFile);
+            // EFS 경로에 파일 저장
+            Path filePath = Paths.get(EFS_PATH, file.getOriginalFilename());
+            file.transferTo(filePath);
 
             // HTTPS로 파일 송신
-            sendFileViaHttps(tempFile);
-
-            // 임시 파일 삭제
-            Files.delete(tempFile);
+            sendFileViaHttps(filePath);
 
             return ResponseEntity.ok("File sent successfully.");
         } catch (Exception e) {
@@ -52,10 +51,12 @@ Python
 ```
 from flask import Flask, request, jsonify
 import os
-import tempfile
 import requests
 
 app = Flask(__name__)
+
+# EFS 마운트된 경로 (예: /mnt/efs)
+EFS_PATH = "/mnt/efs"
 
 @app.route('/api/files/send', methods=['POST'])
 def send_file():
@@ -65,16 +66,12 @@ def send_file():
             return jsonify({"error": "No file provided"}), 400
         file = request.files['file']
 
-        # 임시 디렉토리에 저장
-        temp_dir = tempfile.mkdtemp()
-        temp_file_path = os.path.join(temp_dir, file.filename)
-        file.save(temp_file_path)
+        # EFS 경로에 파일 저장
+        file_path = os.path.join(EFS_PATH, file.filename)
+        file.save(file_path)
 
         # HTTPS로 파일 송신
-        send_file_via_https(temp_file_path)
-
-        # 임시 파일 삭제
-        os.remove(temp_file_path)
+        send_file_via_https(file_path)
 
         return jsonify({"message": "File sent successfully."}), 200
     except Exception as e:
