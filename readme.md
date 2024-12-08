@@ -98,34 +98,42 @@ public class FTPController {
 Python
 ---
 ```
+from flask import Flask, request, jsonify
 from ftplib import FTP
 import os
 
-class FTPReceiver:
-    def __init__(self, server, port, username, password, efs_base_path):
-        self.server = server
-        self.port = port
-        self.username = username
-        self.password = password
-        self.efs_base_path = efs_base_path
+app = Flask(__name__)
 
-    def download_to_efs(self, remote_file_path, file_name):
-        # EFS 경로에 저장될 파일 경로 생성
-        local_file_path = os.path.join(self.efs_base_path, file_name)
+# EFS 및 FTP 설정
+EFS_BASE_PATH = "/mnt/efs"
+FTP_SERVER = "ftp.example.com"
+FTP_PORT = 21
+FTP_USERNAME = "your_username"
+FTP_PASSWORD = "your_password"
 
-        # FTP 연결
-        with FTP() as ftp:
-            try:
-                print(f"Connecting to FTP server {self.server}:{self.port}")
-                ftp.connect(self.server, self.port)
-                ftp.login(self.username, self.password)
-                print("Connected successfully.")
+def download_to_efs(remote_file_path, file_name):
+    local_file_path = os.path.join(EFS_BASE_PATH, file_name)
+    with FTP() as ftp:
+        ftp.connect(FTP_SERVER, FTP_PORT)
+        ftp.login(FTP_USERNAME, FTP_PASSWORD)
+        with open(local_file_path, 'wb') as local_file:
+            ftp.retrbinary(f"RETR {remote_file_path}", local_file.write)
+    return local_file_path
 
-                # 파일 다운로드
-                with open(local_file_path, 'wb') as local_file:
-                    ftp.retrbinary(f"RETR {remote_file_path}", local_file.write)
-                print(f"File downloaded and saved to EFS: {local_file_path}")
-            except Exception as e:
-                print(f"Failed to download file: {e}")
+@app.route("/ftp/receive", methods=["POST"])
+def receive_file():
+    try:
+        data = request.json
+        remote_file_path = data["remote_file_path"]
+        file_name = data["file_name"]
+
+        # 파일 다운로드 및 EFS 저장
+        local_file_path = download_to_efs(remote_file_path, file_name)
+        return jsonify({"message": f"File saved to EFS: {local_file_path}"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
 ```
 ---
